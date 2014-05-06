@@ -66,4 +66,4 @@ decl =
 prog :: Parser Prog
 prog = Prog <$> semiSep lexer decl
 
-parseDecl = parse (decl <* eof) "interactive"
+parseExpr = parse (expr <* eof) "interactive"

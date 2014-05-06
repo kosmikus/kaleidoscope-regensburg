@@ -12,6 +12,7 @@ import LLVM.General.AST as T
 import LLVM.General.AST.Constant as C
 import LLVM.General.AST.CallingConvention as T
 import LLVM.General.AST.Float as T
+import LLVM.General.AST.Global as T
 import Syntax as S
 
 type Message = String
@@ -31,6 +32,21 @@ runExprM m = runIdentity $
              flip runReaderT empty $ 
              m
 
+embedInModule :: Operand -> [Named Instruction] -> Module
+embedInModule ref instrs =
+  let
+    basicBlock = BasicBlock (T.Name "entry") instrs (Do (Ret (Just ref) []))
+    function   = functionDefaults {
+                   name        = T.Name "test"
+                 , returnType  = FloatingPointType 64 IEEE
+                 , parameters  = ([], False)
+                 , basicBlocks = [basicBlock]
+                 }
+  in
+    defaultModule {
+      moduleName        = "Test"
+    , moduleDefinitions = [GlobalDefinition function]
+    }
 
 incrCounter :: ExprM Word
 incrCounter = do

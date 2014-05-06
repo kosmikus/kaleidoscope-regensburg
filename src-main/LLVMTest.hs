@@ -8,6 +8,18 @@ import LLVM.General.AST.CallingConvention as T
 import LLVM.General as L
 import LLVM.General.Context as L
 import Syntax as S
+import Compiler as C
+import Parser as P
+import System.Environment
+
+doAll :: String -> IO ()
+doAll str = do
+  case parseExpr str of
+    Left err   -> fail (show err)
+    Right expr ->
+      case runExprM $ compileExpr' expr of
+        Left err          -> fail err
+        Right (o, instrs) -> compile (embedInModule o instrs)
 
 compile :: T.Module -> IO ()
 compile ast =
@@ -20,10 +32,9 @@ compile ast =
       Right p -> putStr p
 
 main :: IO ()
-main = compile $
-  defaultModule { moduleName = "Test"
-                , moduleDefinitions = defs
-                }
+main = do
+  args <- getArgs
+  doAll (unwords args)
 
 defs :: [T.Definition]
 defs =
