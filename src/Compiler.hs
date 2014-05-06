@@ -29,7 +29,7 @@ runExprM m = runIdentity $
              runErrorT $
              runWriterT $
              flip evalStateT 0 $
-             flip runReaderT empty $ 
+             flip runReaderT (singleton "test" (ConstantOperand (GlobalReference (T.Name "test")))) $ 
              m
 
 embedInModule :: Operand -> [Named Instruction] -> Module
@@ -60,17 +60,11 @@ compileExpr' e = case e of
   S.BinOp op e1 e2 -> do
                         o1 <- compileExpr' e1
                         o2 <- compileExpr' e2
-                        ctr <- incrCounter
-                        let
-                          newname = UnName ctr
-                          newref  = LocalReference newname
-                          instr   = newname := compileOp op o1 o2 []
-                        tell [instr]
-                        return newref
+                        genInstr (compileOp op o1 o2 [])
   S.Var n           -> do
                          symbols <- ask
                          case M.lookup n symbols of
-                           Nothing -> throwError "unknown variable"
+                           Nothing -> throwError $ "unknown variable: " ++ n
                            Just o  -> return o
   S.Call n exprs    -> do
                          symbols <- ask
@@ -78,13 +72,14 @@ compileExpr' e = case e of
                            Nothing -> throwError "unknown functions"
                            Just o  -> do
                              os  <- mapM compileExpr' exprs
-                             ctr <- incrCounter
-                             let
-                               newname = UnName ctr
-                               newref  = LocalReference newname
-                             tell [newname := call o os]
-                             return newref
-                              
+                             genInstr (call o os)
+
+genInstr :: Instruction -> ExprM Operand
+genInstr instr = do
+  ctr <- incrCounter
+  let newname = UnName ctr
+  tell [newname := instr]
+  return (LocalReference newname)
 
 call :: Operand -> [Operand] -> Instruction
 call x rs =

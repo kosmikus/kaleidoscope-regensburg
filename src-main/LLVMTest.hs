@@ -7,6 +7,7 @@ import LLVM.General.AST.Global as T
 import LLVM.General.AST.CallingConvention as T
 import LLVM.General as L
 import LLVM.General.Context as L
+import LLVM.General.PassManager as L
 import Syntax as S
 import Compiler as C
 import Parser as P
@@ -26,7 +27,9 @@ compile ast =
   withContext $ \ ctx -> do
     r <- runErrorT $
            withModuleFromAST ctx ast $ \ m ->
-           moduleLLVMAssembly m
+           withPassManager (defaultPassSetSpec { transforms = [] }) $ \ pm -> do
+             runPassManager pm m
+             moduleLLVMAssembly m
     case r of
       Left  e -> putStr e
       Right p -> putStr p
