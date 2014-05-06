@@ -35,6 +35,8 @@ table =
   , [ binary "+" Plus Ex.AssocLeft
     , binary "-" Minus Ex.AssocLeft
     ]
+  , [ binary "<" LessThan Ex.AssocNone
+    ]
   ]
 
 exprLeaf :: Parser Expr
@@ -63,3 +65,5 @@ decl =
 
 prog :: Parser Prog
 prog = Prog <$> semiSep lexer decl
+
+parseDecl = parse (decl <* eof) "interactive"

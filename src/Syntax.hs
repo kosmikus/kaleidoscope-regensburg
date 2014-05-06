@@ -1,7 +1,3 @@
-
-
-
-
 module Syntax where
 
 type Name = String
@@ -28,4 +24,5 @@ data Op
   | Minus
   | Times
   | Divide
+  | LessThan
   deriving (Eq, Ord, Show)
