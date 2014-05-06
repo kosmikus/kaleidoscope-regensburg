@@ -14,9 +14,9 @@ compileExpr :: Expr                -- ^ expression to compile
             -> Map S.Name Operand  -- ^ known symbols
             -> Word                -- ^ name counter
             -> Either Message
-                 ( Operand           -- ^ reference to result
-                 , Word              -- ^ new name counter
-                 , [Instruction]     -- ^ list of generated instructions
+                 ( Operand             -- ^ reference to result
+                 , Word                -- ^ new name counter
+                 , [Named Instruction] -- ^ list of generated instructions
                  )
 compileExpr e symbols counter = case e of
   S.Float d         -> Right (ConstantOperand (C.Float (Double d)), counter, [])
@@ -27,15 +27,17 @@ compileExpr e symbols counter = case e of
                              Left err -> Left err
                              Right (o2, counter2, instrs2) ->
                                let
-                                 newref  = LocalReference (UnName counter2)
+                                 newname = UnName counter2
+                                 newref  = LocalReference newname
                                  opinstr = case op of
                                              Plus   -> T.FAdd o1 o2 []
                                              Minus  -> T.FSub o1 o2 []
                                              Times  -> T.FMul o1 o2 []
                                              Divide -> T.FDiv o1 o2 []
-                               in Right (newref, counter2 + 1, instrs1 ++ instrs2 ++ [opinstr])
+                                 nmdinstr = newname := opinstr
+                               in Right (newref, counter2 + 1, instrs1 ++ instrs2 ++ [nmdinstr])
 
--- %13 = fadd %7 %10
+-- (%13, [%13 = fadd %7 %10])
                                  
   S.Var n           -> case M.lookup n symbols of
                          Nothing -> Left "unknown variable"
