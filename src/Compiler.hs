@@ -1,68 +1,45 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# OPTIONS_GHC -fdefer-type-errors #-}
 module Compiler where
 
-import Control.Applicative
-import Control.Monad.Free
-import LLVM.General.AST                   as T
-import LLVM.General.AST.CallingConvention as T
-import LLVM.General.AST.Constant          as C
-import LLVM.General.AST.Float             as T
-
+import Data.Map as M
+import Data.Word
+import LLVM.General.AST as T
+import LLVM.General.AST.Constant as C
+import LLVM.General.AST.Float as T
 import Syntax as S
 
---------------------------------------------------------------------------
+type Message = String
 
-data FunctionCompilerOps a =
-    Emit   Instruction (Operand -> a)
-  | Access S.Name      (Operand -> a)
-  deriving Functor
+compileExpr :: Expr                -- ^ expression to compile
+            -> Map S.Name Operand  -- ^ known symbols
+            -> Word                -- ^ name counter
+            -> Either Message
+                 ( Operand           -- ^ reference to result
+                 , Word              -- ^ new name counter
+                 , [Instruction]     -- ^ list of generated instructions
+                 )
+compileExpr e symbols counter = case e of
+  S.Float d         -> Right (ConstantOperand (C.Float (Double d)), counter, [])
+  S.BinOp op e1 e2  -> case compileExpr e1 symbols counter of
+                         Left err -> Left err
+                         Right (o1, counter1, instrs1) ->
+                           case compileExpr e2 symbols counter1 of
+                             Left err -> Left err
+                             Right (o2, counter2, instrs2) ->
+                               let
+                                 newref  = LocalReference (UnName counter2)
+                                 opinstr = case op of
+                                             Plus   -> T.FAdd o1 o2 []
+                                             Minus  -> T.FSub o1 o2 []
+                                             Times  -> T.FMul o1 o2 []
+                                             Divide -> T.FDiv o1 o2 []
+                               in Right (newref, counter2 + 1, instrs1 ++ instrs2 ++ [opinstr])
 
-type FunctionCompiler = Free FunctionCompilerOps
-
-emit :: Instruction -> FunctionCompiler Operand
-emit i = liftF (Emit i id)
-
-access :: S.Name -> FunctionCompiler Operand
-access x = liftF (Access x id)
-
---------------------------------------------------------------------------
-
-data ModuleCompilerOps a =
-    Declare S.Name [S.Name]
-
-type ModuleCompiler = Free ModuleCompilerOps
-
---------------------------------------------------------------------------
-
-call :: S.Name -> [Operand] -> FunctionCompiler Operand
-call x rs = emit $
-  T.Call
-    False  -- never a tail call
-    C      -- C calling convention
-    []
-    (Right (ConstantOperand (GlobalReference (Name x)))) -- only global funs
-    (zip rs (repeat []))
-    []
-    []
-
-compileExpr :: Expr -> FunctionCompiler Operand
-compileExpr e = case e of
-  S.Float d        -> return (ConstantOperand (C.Float (Double d)))
-  S.BinOp op e1 e2 -> do
-    r1 <- compileExpr e1
-    r2 <- compileExpr e2
-    compileOp op r1 r2
-  S.Var x          -> access x
-  S.Call x es      -> do
-    rs <- mapM compileExpr es
-    call x rs
-
-compileOp :: Op -> Operand -> Operand -> FunctionCompiler Operand
-compileOp op r1 r2 = case op of
-  Plus   -> emit (T.FAdd r1 r2 [])
-  Minus  -> emit (T.FSub r1 r2 [])
-  Times  -> emit (T.FMul r1 r2 [])
-  Divide -> emit (T.FDiv r1 r2 [])
-
-compileDecl :: Decl -> ModuleCompiler ()
-compileDecl = undefined
+-- %13 = fadd %7 %10
+                                 
+  S.Var n           -> case M.lookup n symbols of
+                         Nothing -> Left "unknown variable"
+                         Just o  -> Right (o, counter, [])
+  S.Call n expres   -> case M.lookup n symbols of
+                         Nothing -> Left "unknown function"
+                         Just o  -> undefined
