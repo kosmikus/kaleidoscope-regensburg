@@ -18,7 +18,7 @@ doAll str = do
   case parseExpr str of
     Left err   -> fail (show err)
     Right expr ->
-      case runExprM $ compileExpr' expr of
+      case runExprM $ compileExpr expr of
         Left err          -> fail err
         Right (o, instrs) -> compile (embedInModule o instrs)
 

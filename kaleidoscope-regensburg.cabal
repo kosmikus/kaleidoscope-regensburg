@@ -11,12 +11,15 @@ build-type:         Simple
 
 library
   build-depends:    base              >= 4   && < 5,
+                    containers        >= 0.5 && < 1,
+                    llvm-general-pure >= 3.3 && < 4,
                     mtl               >= 2.1 && < 3,
                     parsec            >= 3.1 && < 4
                     
   hs-source-dirs:   src
   exposed-modules:  Syntax
                     Parser
+                    Compiler
   default-language: Haskell2010
 
 executable LLVMTest
