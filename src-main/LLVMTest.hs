@@ -27,7 +27,7 @@ compile ast =
   withContext $ \ ctx -> do
     r <- runErrorT $
            withModuleFromAST ctx ast $ \ m ->
-           withPassManager (defaultPassSetSpec { transforms = [] }) $ \ pm -> do
+           withPassManager defaultPassSetSpec $ \ pm -> do
              runPassManager pm m
              moduleLLVMAssembly m
     case r of
