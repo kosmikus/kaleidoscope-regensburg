@@ -116,6 +116,26 @@ call x rs =
 double :: Type
 double = FloatingPointType 64 IEEE
 
+-- | Compile a declaration.
+compileDecl :: Decl -> Map S.Name Operand -> (Definition, Map S.Name Operand)
+compileDecl (Extern nm parms) m = (GlobalDefinition func, insert nm operand m)
+  where func = functionDefaults {
+                   name        = T.Name nm
+                 , returnType  = double
+                 , parameters  = (Prelude.map namedParam parms, False)
+                 }
+        namedParam pnm = Parameter double (T.Name nm) []
+        operand = ConstantOperand (GlobalReference (name func))
+compileDecl (S.Function nm parms body) m = (GlobalDefinition func, insert nm operand m)
+  where func = functionDefaults {
+                   name        = T.Name nm
+                 , returnType  = double
+                 , parameters  = (Prelude.map namedParam parms, False)
+                 , basicBlocks = [] -- FIXME
+                 }
+        namedParam pnm = Parameter double (T.Name nm) []
+        operand = ConstantOperand (GlobalReference (name func))
+
 -- | Embed a compiled function in a single function called "test"
 -- which in turn is contained in a module called "Test".
 embedInModule :: Operand -> [Named Instruction] -> Module
